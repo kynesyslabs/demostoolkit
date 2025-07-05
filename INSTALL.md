@@ -55,13 +55,13 @@ git clone https://github.com/kynesyslabs/demostoolkit.git
 cd demostoolkit
 
 # For CLI + UI development
-./launch-ui.sh
+./power-user-scripts/launch-ui.sh
 
 # For production builds
-./build-ui.sh
+./power-user-scripts/build-ui.sh
 
 # For distribution packages
-./package-distribution.sh
+./power-user-scripts/package-distribution.sh
 ```
 
 ---

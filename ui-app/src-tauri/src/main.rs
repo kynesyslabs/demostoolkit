@@ -54,10 +54,17 @@ fn find_cli_tool_path() -> Result<String, String> {
     }
     
     // Path 4: System-wide installation (fallback)
-    let system_paths = vec![
-        "/usr/local/bin/demostools_file.ts",
-        "/opt/demos-toolkit/demostools_file.ts",
-    ];
+    let system_paths = if cfg!(windows) {
+        vec![
+            "C:\\Program Files\\Demos SDK Toolkit\\demostools_file.ts",
+            "C:\\ProgramData\\Demos SDK Toolkit\\demostools_file.ts",
+        ]
+    } else {
+        vec![
+            "/usr/local/bin/demostools_file.ts",
+            "/opt/demos-toolkit/demostools_file.ts",
+        ]
+    };
     
     for path in system_paths {
         if Path::new(path).exists() {
@@ -66,24 +73,30 @@ fn find_cli_tool_path() -> Result<String, String> {
     }
     
     // Path 5: Check PATH for demostools command
-    if let Ok(which_output) = std::process::Command::new("which")
-        .arg("demostools")
+    let which_cmd = if cfg!(windows) { "where" } else { "which" };
+    let demostools_name = if cfg!(windows) { "demostools.bat" } else { "demostools" };
+    
+    if let Ok(which_output) = std::process::Command::new(which_cmd)
+        .arg(demostools_name)
         .output() 
     {
         if which_output.status.success() {
             let demostools_path = String::from_utf8_lossy(&which_output.stdout).trim().to_string();
             if !demostools_path.is_empty() && Path::new(&demostools_path).exists() {
-                // If it's a symlink, try to resolve the actual CLI file
-                if demostools_path.ends_with("/demostools") {
-                    let parent_dir = Path::new(&demostools_path).parent()
-                        .and_then(|p| p.parent())
-                        .and_then(|p| p.to_str())
-                        .unwrap_or("");
-                    let resolved_path = format!("{}/demostools_file.ts", parent_dir);
-                    if Path::new(&resolved_path).exists() {
-                        return Ok(resolved_path);
-                    }
+                // If it's a symlink/batch file, try to resolve the actual CLI file
+                let path_obj = Path::new(&demostools_path);
+                let parent_dir = path_obj.parent()
+                    .and_then(|p| p.parent())
+                    .and_then(|p| p.to_str())
+                    .unwrap_or("");
+                
+                let separator = if cfg!(windows) { "\\" } else { "/" };
+                let resolved_path = format!("{}{}demostools_file.ts", parent_dir, separator);
+                
+                if Path::new(&resolved_path).exists() {
+                    return Ok(resolved_path);
                 }
+                
                 return Ok(demostools_path);
             }
         }

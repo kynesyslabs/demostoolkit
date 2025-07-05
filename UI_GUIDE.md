@@ -14,8 +14,10 @@ internal_tools/
 │   ├── index.html             # Main UI interface
 │   ├── package.json           # Frontend dependencies
 │   └── README.md              # UI-specific documentation
-├── launch-ui.sh               # Quick launch script
-├── build-ui.sh                # Build production executable
+├── power-user-scripts/        # Development and build scripts
+│   ├── launch-ui.sh           # Quick launch script
+│   ├── build-ui.sh            # Build production executable
+│   └── package-distribution.sh # Create distribution packages
 └── UI_GUIDE.md                # This guide
 ```
 
@@ -25,19 +27,19 @@ internal_tools/
 ```bash
 # From the internal_tools directory
 cd ui-app
-./setup.sh
+bun install
 ```
 
 ### 2. Launch Development Mode
 ```bash
 # From the internal_tools directory
-./launch-ui.sh
+./power-user-scripts/launch-ui.sh
 ```
 
 ### 3. Build Production Executable
 ```bash
 # From the internal_tools directory
-./build-ui.sh
+./power-user-scripts/build-ui.sh
 ```
 
 ## 🎨 UI Features

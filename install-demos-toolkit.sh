@@ -41,26 +41,21 @@ detect_platform() {
             if command -v apt-get >/dev/null 2>&1; then
                 PLATFORM="linux"
                 PACKAGE_MANAGER="apt"
-                UI_BINARY_TYPE="deb"
             elif command -v yum >/dev/null 2>&1; then
                 PLATFORM="linux"
                 PACKAGE_MANAGER="yum"
-                UI_BINARY_TYPE="appimage"
             else
                 PLATFORM="linux"
                 PACKAGE_MANAGER="generic"
-                UI_BINARY_TYPE="appimage"
             fi
             ;;
         Darwin*)
             PLATFORM="macos"
             PACKAGE_MANAGER="brew"
-            UI_BINARY_TYPE="app"
             ;;
         MINGW*|MSYS*|CYGWIN*)
             PLATFORM="windows"
             PACKAGE_MANAGER="chocolatey"
-            UI_BINARY_TYPE="msi"
             ;;
         *)
             log_error "Unsupported operating system: $os"
@@ -243,10 +238,18 @@ install_ui_dependencies() {
             case $PACKAGE_MANAGER in
                 apt)
                     sudo apt install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+                    # AppImage support is optional - don't fail if linuxdeploy isn't available
+                    if ! command -v linuxdeploy >/dev/null 2>&1; then
+                        log_info "linuxdeploy not found - AppImage creation will be skipped (raw binary will be used)"
+                    fi
                     ;;
                 yum)
                     sudo yum groupinstall -y "Development Tools"
                     sudo yum install -y webkit2gtk3-devel openssl-devel curl wget gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+                    # AppImage support is optional - don't fail if linuxdeploy isn't available
+                    if ! command -v linuxdeploy >/dev/null 2>&1; then
+                        log_info "linuxdeploy not found - AppImage creation will be skipped (raw binary will be used)"
+                    fi
                     ;;
                 generic)
                     log_warning "Please install webkit2gtk, build-essential, and development tools for your distribution"
@@ -346,13 +349,31 @@ build_ui_application() {
     
     # Build the UI
     log_info "Compiling UI application with Tauri..."
-    bun run tauri build
     
-    if [[ $? -eq 0 ]]; then
+    # Build with bundling - focus on binary creation, warn on packaging failures
+    log_info "Building UI binary (AppImage and DEB are optional)..."
+    
+    if bun run tauri build 2>&1 | tee /tmp/tauri_build.log; then
         log_success "UI application built successfully"
     else
-        log_error "UI build failed"
-        return 1
+        # Check if at least the binary was created
+        if [[ -f "src-tauri/target/release/demostools-ui" ]]; then
+            log_warning "Some packaging failed but binary was created successfully"
+            log_success "UI application built (binary available)"
+        else
+            log_error "UI build failed completely"
+            return 1
+        fi
+    fi
+    
+    # Show specific warnings for packaging failures
+    if grep -q "linuxdeploy.*not found\|AppImage.*failed" /tmp/tauri_build.log 2>/dev/null; then
+        log_warning "AppImage creation failed (linuxdeploy not available) - using raw binary instead"
+    fi
+    
+    if grep -q "failed to bundle\|dpkg.*failed" /tmp/tauri_build.log 2>/dev/null; then
+        log_warning "Some package formats failed to build, but the main binary is ready"
+        log_info "Raw binary installation works on all Linux distributions"
     fi
     
     cd "$INSTALL_DIR"
@@ -378,10 +399,20 @@ install_ui_binary() {
 # Install UI from fresh build
 install_ui_from_build() {
     local bundle_dir="$INSTALL_DIR/ui-app/src-tauri/target/release/bundle"
+    local raw_binary="$INSTALL_DIR/ui-app/src-tauri/target/release/demostools-ui"
     
     case $PLATFORM in
         linux)
-            # Try AppImage first
+            # Primary: Use the main binary (works on all distros)
+            if [[ -f "$raw_binary" ]]; then
+                cp "$raw_binary" "$BIN_DIR/demostools-ui"
+                chmod +x "$BIN_DIR/demostools-ui"
+                log_success "UI installed as binary in $BIN_DIR (accessible via 'demostools-ui')"
+                log_info "Raw binary installation works on all Linux distributions"
+                return 0
+            fi
+            
+            # Fallback: Try AppImage (if it was built successfully)
             local appimage_file=$(find "$bundle_dir/appimage/" -name "*.AppImage" 2>/dev/null | head -1)
             if [[ -n "$appimage_file" ]]; then
                 chmod +x "$appimage_file"
@@ -390,12 +421,18 @@ install_ui_from_build() {
                 return 0
             fi
             
-            # Try DEB package
+            # Extra fallback: Try DEB if user wants system integration
             local deb_file=$(find "$bundle_dir/deb/" -name "*.deb" 2>/dev/null | head -1)
             if [[ -n "$deb_file" ]]; then
-                sudo dpkg -i "$deb_file"
-                log_success "UI installed via DEB package"
-                return 0
+                log_info "DEB package available for system integration"
+                read -p "Install DEB package for system menu integration? (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    if sudo dpkg -i "$deb_file"; then
+                        log_success "UI installed via DEB package"
+                        return 0
+                    fi
+                fi
             fi
             ;;
         macos)
