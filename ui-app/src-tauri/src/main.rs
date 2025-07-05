@@ -5,11 +5,11 @@ use tauri_plugin_shell::ShellExt;
 
 #[tauri::command]
 async fn run_demostool(app: tauri::AppHandle, command: String, args: Vec<String>) -> Result<String, String> {
-    // Get the path to the CLI tool (relative to the app)
-    let cli_path = "../../demostools_file.ts";
+    // Try to find the CLI tool in multiple locations
+    let cli_path = find_cli_tool_path()?;
     
     // Build the command arguments
-    let mut cmd_args = vec![cli_path.to_string(), command];
+    let mut cmd_args = vec![cli_path, command];
     cmd_args.extend(args);
     
     // Execute the command using the shell plugin
@@ -25,6 +25,71 @@ async fn run_demostool(app: tauri::AppHandle, command: String, args: Vec<String>
     } else {
         Err(String::from_utf8_lossy(&output.stderr).to_string())
     }
+}
+
+fn find_cli_tool_path() -> Result<String, String> {
+    use std::path::Path;
+    use std::env;
+    
+    // Path 1: Development - relative to the app (for development mode)
+    let dev_path = "../../demostools_file.ts";
+    if Path::new(dev_path).exists() {
+        return Ok(dev_path.to_string());
+    }
+    
+    // Path 2: Installed - in user's home directory
+    if let Ok(home_dir) = env::var("HOME") {
+        let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
+        if Path::new(&installed_path).exists() {
+            return Ok(installed_path);
+        }
+    }
+    
+    // Path 3: Windows - user profile directory
+    if let Ok(user_profile) = env::var("USERPROFILE") {
+        let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
+        if Path::new(&windows_path).exists() {
+            return Ok(windows_path);
+        }
+    }
+    
+    // Path 4: System-wide installation (fallback)
+    let system_paths = vec![
+        "/usr/local/bin/demostools_file.ts",
+        "/opt/demos-toolkit/demostools_file.ts",
+    ];
+    
+    for path in system_paths {
+        if Path::new(path).exists() {
+            return Ok(path.to_string());
+        }
+    }
+    
+    // Path 5: Check PATH for demostools command
+    if let Ok(which_output) = std::process::Command::new("which")
+        .arg("demostools")
+        .output() 
+    {
+        if which_output.status.success() {
+            let demostools_path = String::from_utf8_lossy(&which_output.stdout).trim().to_string();
+            if !demostools_path.is_empty() && Path::new(&demostools_path).exists() {
+                // If it's a symlink, try to resolve the actual CLI file
+                if demostools_path.ends_with("/demostools") {
+                    let parent_dir = Path::new(&demostools_path).parent()
+                        .and_then(|p| p.parent())
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("");
+                    let resolved_path = format!("{}/demostools_file.ts", parent_dir);
+                    if Path::new(&resolved_path).exists() {
+                        return Ok(resolved_path);
+                    }
+                }
+                return Ok(demostools_path);
+            }
+        }
+    }
+    
+    Err("CLI tools not found. Please ensure demostools is installed or run from development directory.".to_string())
 }
 
 #[tauri::command]

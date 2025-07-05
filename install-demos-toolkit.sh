@@ -14,6 +14,10 @@ RELEASE_URL="https://api.github.com/repos/kynesyslabs/demostoolkit/releases/late
 INSTALL_DIR="$HOME/.demos-toolkit"
 BIN_DIR="$HOME/.local/bin"
 
+# Installation options (will be set by user choice)
+INSTALL_UI="false"
+BUILD_UI="false"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -79,6 +83,59 @@ check_root() {
     fi
 }
 
+# Ask user about installation preferences
+ask_installation_options() {
+    echo ""
+    log_info "Installation Options"
+    echo "===================="
+    echo ""
+    echo "What would you like to install?"
+    echo ""
+    echo "1) CLI tools only (fast, ~30 seconds)"
+    echo "   • Command-line interface"
+    echo "   • All toolkit functionality"
+    echo "   • Lightweight installation"
+    echo ""
+    echo "2) CLI tools + Desktop UI (slower, ~3-5 minutes)"
+    echo "   • Everything from option 1"
+    echo "   • Native desktop application"
+    echo "   • Requires Rust and build dependencies"
+    echo ""
+    
+    while true; do
+        read -p "Choose option (1/2): " choice
+        case $choice in
+            1)
+                INSTALL_UI="false"
+                BUILD_UI="false"
+                log_info "Selected: CLI tools only"
+                break
+                ;;
+            2)
+                INSTALL_UI="true"
+                BUILD_UI="true"
+                log_info "Selected: CLI tools + Desktop UI"
+                echo ""
+                log_warning "This will install additional dependencies (Rust, build tools)"
+                read -p "Continue with UI build? (y/N): " -n 1 -r
+                echo
+                if [[ $REPLY =~ ^[Yy]$ ]]; then
+                    break
+                else
+                    log_info "Falling back to CLI-only installation"
+                    INSTALL_UI="false"
+                    BUILD_UI="false"
+                    break
+                fi
+                ;;
+            *)
+                echo "Please enter 1 or 2"
+                ;;
+        esac
+    done
+    echo ""
+}
+
 # Install system dependencies
 install_dependencies() {
     log_info "Installing system dependencies..."
@@ -138,6 +195,76 @@ install_bun() {
         log_error "Failed to install Bun"
         exit 1
     fi
+}
+
+# Install Rust (needed for UI building)
+install_rust() {
+    if [[ "$BUILD_UI" != "true" ]]; then
+        return 0
+    fi
+    
+    if command -v cargo >/dev/null 2>&1; then
+        log_success "Rust already installed ($(rustc --version))"
+        return 0
+    fi
+    
+    log_info "Installing Rust (required for UI building)..."
+    
+    case $PLATFORM in
+        linux|macos)
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            # Add to PATH for current session
+            export PATH="$HOME/.cargo/bin:$PATH"
+            ;;
+        windows)
+            log_info "Please install Rust from https://rustup.rs/"
+            read -p "Press Enter after installing Rust..."
+            ;;
+    esac
+    
+    if command -v cargo >/dev/null 2>&1; then
+        log_success "Rust installed successfully"
+    else
+        log_error "Failed to install Rust"
+        exit 1
+    fi
+}
+
+# Install additional UI build dependencies
+install_ui_dependencies() {
+    if [[ "$BUILD_UI" != "true" ]]; then
+        return 0
+    fi
+    
+    log_info "Installing UI build dependencies..."
+    
+    case $PLATFORM in
+        linux)
+            case $PACKAGE_MANAGER in
+                apt)
+                    sudo apt install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+                    ;;
+                yum)
+                    sudo yum groupinstall -y "Development Tools"
+                    sudo yum install -y webkit2gtk3-devel openssl-devel curl wget gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+                    ;;
+                generic)
+                    log_warning "Please install webkit2gtk, build-essential, and development tools for your distribution"
+                    ;;
+            esac
+            ;;
+        macos)
+            # macOS usually has everything needed, just ensure Xcode tools
+            if ! xcode-select -p >/dev/null 2>&1; then
+                log_info "Installing Xcode command line tools..."
+                xcode-select --install
+                read -p "Press Enter after Xcode tools installation completes..."
+            fi
+            ;;
+        windows)
+            log_info "Please ensure Visual Studio Build Tools are installed"
+            ;;
+    esac
 }
 
 # Create installation directory
@@ -203,26 +330,107 @@ install_cli_dependencies() {
     log_success "CLI tools installed"
 }
 
-# Download and install UI binary
+# Build UI application from source
+build_ui_application() {
+    if [[ "$BUILD_UI" != "true" ]]; then
+        return 0
+    fi
+    
+    log_info "Building desktop UI application (this may take 3-5 minutes)..."
+    
+    cd "$INSTALL_DIR"
+    
+    # Install UI dependencies
+    cd ui-app
+    bun install
+    
+    # Build the UI
+    log_info "Compiling UI application with Tauri..."
+    bun run tauri build
+    
+    if [[ $? -eq 0 ]]; then
+        log_success "UI application built successfully"
+    else
+        log_error "UI build failed"
+        return 1
+    fi
+    
+    cd "$INSTALL_DIR"
+}
+
+# Install UI binary (either from build or pre-built)
 install_ui_binary() {
+    if [[ "$INSTALL_UI" != "true" ]]; then
+        return 0
+    fi
+    
     log_info "Installing desktop UI..."
+    
+    if [[ "$BUILD_UI" == "true" ]]; then
+        # Install from fresh build
+        install_ui_from_build
+    else
+        # Try to install from pre-built binaries
+        install_ui_from_prebuilt
+    fi
+}
+
+# Install UI from fresh build
+install_ui_from_build() {
+    local bundle_dir="$INSTALL_DIR/ui-app/src-tauri/target/release/bundle"
     
     case $PLATFORM in
         linux)
-            case $UI_BINARY_TYPE in
-                deb)
-                    local deb_file="$INSTALL_DIR/ui-binaries/deb/demostools-ui.deb"
-                    if [[ -f "$deb_file" ]]; then
-                        sudo dpkg -i "$deb_file"
-                        log_success "UI installed via DEB package"
-                    else
-                        install_appimage_fallback
-                    fi
-                    ;;
-                appimage)
-                    install_appimage_fallback
-                    ;;
-            esac
+            # Try AppImage first
+            local appimage_file=$(find "$bundle_dir/appimage/" -name "*.AppImage" 2>/dev/null | head -1)
+            if [[ -n "$appimage_file" ]]; then
+                chmod +x "$appimage_file"
+                cp "$appimage_file" "$BIN_DIR/demostools-ui"
+                log_success "UI installed as AppImage in $BIN_DIR"
+                return 0
+            fi
+            
+            # Try DEB package
+            local deb_file=$(find "$bundle_dir/deb/" -name "*.deb" 2>/dev/null | head -1)
+            if [[ -n "$deb_file" ]]; then
+                sudo dpkg -i "$deb_file"
+                log_success "UI installed via DEB package"
+                return 0
+            fi
+            ;;
+        macos)
+            local app_bundle=$(find "$bundle_dir/macos/" -name "*.app" 2>/dev/null | head -1)
+            if [[ -n "$app_bundle" ]]; then
+                cp -r "$app_bundle" /Applications/
+                log_success "UI installed to Applications"
+                return 0
+            fi
+            ;;
+        windows)
+            local msi_file=$(find "$bundle_dir/msi/" -name "*.msi" 2>/dev/null | head -1)
+            if [[ -n "$msi_file" ]]; then
+                log_info "MSI installer created: $msi_file"
+                log_info "Please run the installer manually"
+                return 0
+            fi
+            ;;
+    esac
+    
+    log_warning "Could not install UI binary automatically"
+}
+
+# Install UI from pre-built binaries (fallback)
+install_ui_from_prebuilt() {
+    case $PLATFORM in
+        linux)
+            local appimage_file=$(find "$INSTALL_DIR/ui-binaries/appimage/" -name "*.AppImage" 2>/dev/null | head -1)
+            if [[ -n "$appimage_file" ]]; then
+                chmod +x "$appimage_file"
+                ln -sf "$appimage_file" "$BIN_DIR/demostools-ui"
+                log_success "UI installed as AppImage"
+            else
+                log_warning "Pre-built UI not found. Use --build-ui option to build from source."
+            fi
             ;;
         macos)
             local app_bundle="$INSTALL_DIR/ui-binaries/macos/Demos SDK Toolkit.app"
@@ -230,16 +438,15 @@ install_ui_binary() {
                 cp -r "$app_bundle" /Applications/
                 log_success "UI installed to Applications"
             else
-                log_warning "macOS app bundle not found"
+                log_warning "Pre-built macOS app not found"
             fi
             ;;
         windows)
             local msi_file=$(find "$INSTALL_DIR/ui-binaries/msi/" -name "*.msi" 2>/dev/null | head -1)
             if [[ -n "$msi_file" ]]; then
                 log_info "Please run: $msi_file"
-                log_info "Windows installer will open after this script completes"
             else
-                log_warning "Windows installer not found"
+                log_warning "Pre-built Windows installer not found"
             fi
             ;;
     esac
@@ -305,17 +512,22 @@ show_usage() {
     echo "       demostools generate-wallet"
     echo "       demostools check-balance <address>"
     echo ""
-    case $PLATFORM in
-        linux)
-            echo "  UI:  demostools-ui (or search for 'Demos' in applications)"
-            ;;
-        macos)
-            echo "  UI:  Open 'Demos SDK Toolkit' from Applications"
-            ;;
-        windows)
-            echo "  UI:  Install and run the MSI, then search for 'Demos SDK Toolkit'"
-            ;;
-    esac
+    if [[ "$INSTALL_UI" == "true" ]]; then
+        case $PLATFORM in
+            linux)
+                echo "  UI:  demostools-ui (or search for 'Demos' in applications)"
+                ;;
+            macos)
+                echo "  UI:  Open 'Demos SDK Toolkit' from Applications"
+                ;;
+            windows)
+                echo "  UI:  Search for 'Demos SDK Toolkit' in Start Menu"
+                ;;
+        esac
+    else
+        echo "  UI:  Not installed (CLI-only mode selected)"
+        echo "       To add UI later, re-run installer and select option 2"
+    fi
     echo ""
     echo "📖 Documentation:"
     echo "  • README: $INSTALL_DIR/README.md"
@@ -338,13 +550,27 @@ main() {
     # Pre-checks
     check_root
     detect_platform
+    ask_installation_options
     
-    # Installation steps
+    # Basic installation steps
     install_dependencies
     install_bun
+    
+    # UI-specific dependencies (only if building UI)
+    if [[ "$BUILD_UI" == "true" ]]; then
+        install_rust
+        install_ui_dependencies
+    fi
+    
     setup_directories
     download_cli_tools
     install_cli_dependencies
+    
+    # UI building and installation (only if requested)
+    if [[ "$BUILD_UI" == "true" ]]; then
+        build_ui_application
+    fi
+    
     install_ui_binary
     
     # Post-installation
