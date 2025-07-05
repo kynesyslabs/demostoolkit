@@ -31,6 +31,10 @@ fn find_cli_tool_path() -> Result<String, String> {
     use std::path::Path;
     use std::env;
     
+    // Debug info
+    let current_dir = env::current_dir().unwrap_or_else(|_| "unknown".into());
+    let exe_path = env::current_exe().unwrap_or_else(|_| "unknown".into());
+    
     // Path 1: Installed - in user's home directory (desktop/exec launch)
     if let Ok(home_dir) = env::var("HOME") {
         let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
@@ -53,7 +57,33 @@ fn find_cli_tool_path() -> Result<String, String> {
         return Ok(dev_path.to_string());
     }
     
-    Err("CLI tools not found. Please ensure demostools is installed in ~/.demos-toolkit/ or run the installer.".to_string())
+    // Create detailed error with debug info
+    let home_dir = env::var("HOME").unwrap_or_else(|_| "HOME_NOT_SET".to_string());
+    let user_profile = env::var("USERPROFILE").unwrap_or_else(|_| "USERPROFILE_NOT_SET".to_string());
+    let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
+    let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
+    
+    Err(format!(
+        "CLI tools not found. Debug info:\n\
+        Current dir: {}\n\
+        Exe path: {}\n\
+        HOME: {}\n\
+        USERPROFILE: {}\n\
+        Checked paths:\n\
+        - {} (exists: {})\n\
+        - {} (exists: {})\n\
+        - {} (exists: {})",
+        current_dir.display(),
+        exe_path.display(),
+        home_dir,
+        user_profile,
+        installed_path,
+        Path::new(&installed_path).exists(),
+        windows_path,
+        Path::new(&windows_path).exists(),
+        dev_path,
+        Path::new(dev_path).exists()
+    ))
 }
 
 #[tauri::command]
