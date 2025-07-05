@@ -31,13 +31,7 @@ fn find_cli_tool_path() -> Result<String, String> {
     use std::path::Path;
     use std::env;
     
-    // Path 1: Development - relative to the app (for development mode)
-    let dev_path = "../../demostools_file.ts";
-    if Path::new(dev_path).exists() {
-        return Ok(dev_path.to_string());
-    }
-    
-    // Path 2: Installed - in user's home directory
+    // Path 1: Installed - in user's home directory (desktop/exec launch)
     if let Ok(home_dir) = env::var("HOME") {
         let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
         if Path::new(&installed_path).exists() {
@@ -45,7 +39,7 @@ fn find_cli_tool_path() -> Result<String, String> {
         }
     }
     
-    // Path 3: Windows - user profile directory
+    // Path 2: Windows - user profile directory
     if let Ok(user_profile) = env::var("USERPROFILE") {
         let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
         if Path::new(&windows_path).exists() {
@@ -53,56 +47,13 @@ fn find_cli_tool_path() -> Result<String, String> {
         }
     }
     
-    // Path 4: System-wide installation (fallback)
-    let system_paths = if cfg!(windows) {
-        vec![
-            "C:\\Program Files\\Demos SDK Toolkit\\demostools_file.ts",
-            "C:\\ProgramData\\Demos SDK Toolkit\\demostools_file.ts",
-        ]
-    } else {
-        vec![
-            "/usr/local/bin/demostools_file.ts",
-            "/opt/demos-toolkit/demostools_file.ts",
-        ]
-    };
-    
-    for path in system_paths {
-        if Path::new(path).exists() {
-            return Ok(path.to_string());
-        }
+    // Path 3: Development - relative to current working directory (dev mode only)
+    let dev_path = "../../demostools_file.ts";
+    if Path::new(dev_path).exists() {
+        return Ok(dev_path.to_string());
     }
     
-    // Path 5: Check PATH for demostools command
-    let which_cmd = if cfg!(windows) { "where" } else { "which" };
-    let demostools_name = if cfg!(windows) { "demostools.bat" } else { "demostools" };
-    
-    if let Ok(which_output) = std::process::Command::new(which_cmd)
-        .arg(demostools_name)
-        .output() 
-    {
-        if which_output.status.success() {
-            let demostools_path = String::from_utf8_lossy(&which_output.stdout).trim().to_string();
-            if !demostools_path.is_empty() && Path::new(&demostools_path).exists() {
-                // If it's a symlink/batch file, try to resolve the actual CLI file
-                let path_obj = Path::new(&demostools_path);
-                let parent_dir = path_obj.parent()
-                    .and_then(|p| p.parent())
-                    .and_then(|p| p.to_str())
-                    .unwrap_or("");
-                
-                let separator = if cfg!(windows) { "\\" } else { "/" };
-                let resolved_path = format!("{}{}demostools_file.ts", parent_dir, separator);
-                
-                if Path::new(&resolved_path).exists() {
-                    return Ok(resolved_path);
-                }
-                
-                return Ok(demostools_path);
-            }
-        }
-    }
-    
-    Err("CLI tools not found. Please ensure demostools is installed or run from development directory.".to_string())
+    Err("CLI tools not found. Please ensure demostools is installed in ~/.demos-toolkit/ or run the installer.".to_string())
 }
 
 #[tauri::command]
