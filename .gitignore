@@ -1,0 +1,105 @@
+# Dependencies
+node_modules/
+*.pnp
+.pnp.js
+
+# Environment variables (sensitive data)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs (runtime generated)
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Build outputs
+out/
+dist/
+build/
+*.tgz
+
+# Code coverage
+coverage/
+*.lcov
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Caches
+.eslintcache
+.cache
+.parcel-cache
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Lock files (keep bun.lock, ignore others)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Configuration files with secrets
+config.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Wallet files (sensitive)
+wallets.json
+private_keys/
+*.wallet
+
+# User-specific config files (should be in user's home directory)
+user_config.json
+local_config.json
+
+# Demos SDK specific
+.demos/
+demos_config/
+
+# Test artifacts
+test-results/
+playwright-report/
+test-output/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Bun specific
+.bun

@@ -1,0 +1,26 @@
+#!/bin/bash
+# Demos SDK Toolkit - Wrapper Script
+# This script provides a seamless interface to run demostools commands
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Change to the script directory to ensure relative paths work
+cd "$SCRIPT_DIR"
+
+# Check if bun is available
+if ! command -v bun >/dev/null 2>&1; then
+    echo "❌ Error: Bun is not installed or not in PATH"
+    echo "   Please run ./setup.sh to install Bun"
+    exit 1
+fi
+
+# Check if demostools_file.ts exists
+if [[ ! -f "demostools_file.ts" ]]; then
+    echo "❌ Error: demostools_file.ts not found"
+    echo "   Please ensure you're in the correct directory"
+    exit 1
+fi
+
+# Run the actual demostools with all passed arguments
+exec bun demostools_file.ts "$@"

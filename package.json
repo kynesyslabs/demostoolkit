@@ -1,0 +1,19 @@
+{
+  "name": "demostools",
+  "version": "1.0.0",
+  "description": "Command-line toolkit for interacting with the Demos blockchain network",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@kynesyslabs/demosdk": "^2.2.70",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.0.1"
+  }
+}
