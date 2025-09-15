@@ -12,7 +12,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@kynesyslabs/demosdk": "^2.2.70",
+    "@kynesyslabs/demosdk": "latest",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.0.1"
   }

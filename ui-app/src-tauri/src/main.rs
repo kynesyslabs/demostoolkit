@@ -28,7 +28,7 @@ async fn run_demostool(app: tauri::AppHandle, command: String, args: Vec<String>
 }
 
 fn find_cli_tool_path() -> Result<String, String> {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use std::env;
     
     // Debug info
@@ -45,38 +45,116 @@ fn find_cli_tool_path() -> Result<String, String> {
     
     // Path 2: Windows - user profile directory
     if let Ok(user_profile) = env::var("USERPROFILE") {
-        let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
+        let windows_path = format!("{}\.demos-toolkit\demostools_file.ts", user_profile);
         if Path::new(&windows_path).exists() {
             return Ok(windows_path);
         }
     }
     
-    // Path 3: Development - relative to current working directory (dev mode only)
+    // Path 3: macOS App Bundle - find CLI tool relative to app bundle
+    // When launched from Applications, exe_path is something like:
+    // /Applications/Demos SDK Toolkit.app/Contents/MacOS/Demos SDK Toolkit
+    if cfg!(target_os = "macos") {
+        if let Ok(exe_path_str) = exe_path.to_str() {
+            if exe_path_str.contains(".app/Contents/MacOS/") {
+                // Navigate from app bundle to parent directory where CLI tools should be
+                let exe_parent = exe_path.parent()
+                    .and_then(|p| p.parent())  // Contents
+                    .and_then(|p| p.parent())  // .app
+                    .and_then(|p| p.parent()); // Parent directory
+                
+                if let Some(parent) = exe_parent {
+                    // Check if there's an internal_tools directory
+                    let internal_tools_path = parent.join("internal_tools").join("demostools_file.ts");
+                    if internal_tools_path.exists() {
+                        if let Some(path_str) = internal_tools_path.to_str() {
+                            return Ok(path_str.to_string());
+                        }
+                    }
+                    
+                    // Check if CLI tools are directly in parent directory
+                    let direct_path = parent.join("demostools_file.ts");
+                    if direct_path.exists() {
+                        if let Some(path_str) = direct_path.to_str() {
+                            return Ok(path_str.to_string());
+                        }
+                    }
+                    
+                    // Check relative to the app bundle location
+                    let relative_path = parent.join("../../demostools_file.ts");
+                    if relative_path.exists() {
+                        if let Some(path_str) = relative_path.to_str() {
+                            return Ok(path_str.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Path 4: Development - relative to current working directory (dev mode, Linux)
     let dev_path = "../../demostools_file.ts";
     if Path::new(dev_path).exists() {
         return Ok(dev_path.to_string());
+    }
+    
+    // Path 5: Same directory as executable (Linux AppImage or direct execution)
+    if let Some(exe_parent) = exe_path.parent() {
+        let sibling_path = exe_parent.join("demostools_file.ts");
+        if sibling_path.exists() {
+            if let Some(path_str) = sibling_path.to_str() {
+                return Ok(path_str.to_string());
+            }
+        }
+        
+        // Check parent directories up to 3 levels for flexibility
+        let mut current_path = exe_parent.to_path_buf();
+        for _ in 0..3 {
+            let cli_path = current_path.join("demostools_file.ts");
+            if cli_path.exists() {
+                if let Some(path_str) = cli_path.to_str() {
+                    return Ok(path_str.to_string());
+                }
+            }
+            if let Some(parent) = current_path.parent() {
+                current_path = parent.to_path_buf();
+            } else {
+                break;
+            }
+        }
     }
     
     // Create detailed error with debug info
     let home_dir = env::var("HOME").unwrap_or_else(|_| "HOME_NOT_SET".to_string());
     let user_profile = env::var("USERPROFILE").unwrap_or_else(|_| "USERPROFILE_NOT_SET".to_string());
     let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
-    let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
+    let windows_path = format!("{}\.demos-toolkit\demostools_file.ts", user_profile);
     
     Err(format!(
-        "CLI tools not found. Debug info:\n\
-        Current dir: {}\n\
-        Exe path: {}\n\
-        HOME: {}\n\
-        USERPROFILE: {}\n\
-        Checked paths:\n\
-        - {} (exists: {})\n\
-        - {} (exists: {})\n\
+        "CLI tools not found. Debug info:
+\
+        Current dir: {}
+\
+        Exe path: {}
+\
+        HOME: {}
+\
+        USERPROFILE: {}
+\
+        Platform: {}
+\
+        Checked paths:
+\
+        - {} (exists: {})
+\
+        - {} (exists: {})
+\
         - {} (exists: {})",
         current_dir.display(),
         exe_path.display(),
         home_dir,
         user_profile,
+        env::consts::OS,
         installed_path,
         Path::new(&installed_path).exists(),
         windows_path,

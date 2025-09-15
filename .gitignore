@@ -106,3 +106,5 @@ test-output/
 
 # Bun specific
 .bun
+.serena
+local-install.sh
