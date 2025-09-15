@@ -45,7 +45,7 @@ fn find_cli_tool_path() -> Result<String, String> {
     
     // Path 2: Windows - user profile directory
     if let Ok(user_profile) = env::var("USERPROFILE") {
-        let windows_path = format!("{}\.demos-toolkit\demostools_file.ts", user_profile);
+        let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
         if Path::new(&windows_path).exists() {
             return Ok(windows_path);
         }
@@ -55,7 +55,7 @@ fn find_cli_tool_path() -> Result<String, String> {
     // When launched from Applications, exe_path is something like:
     // /Applications/Demos SDK Toolkit.app/Contents/MacOS/Demos SDK Toolkit
     if cfg!(target_os = "macos") {
-        if let Ok(exe_path_str) = exe_path.to_str() {
+        if let Some(exe_path_str) = exe_path.to_str() {
             if exe_path_str.contains(".app/Contents/MacOS/") {
                 // Navigate from app bundle to parent directory where CLI tools should be
                 let exe_parent = exe_path.parent()
@@ -128,7 +128,7 @@ fn find_cli_tool_path() -> Result<String, String> {
     let home_dir = env::var("HOME").unwrap_or_else(|_| "HOME_NOT_SET".to_string());
     let user_profile = env::var("USERPROFILE").unwrap_or_else(|_| "USERPROFILE_NOT_SET".to_string());
     let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
-    let windows_path = format!("{}\.demos-toolkit\demostools_file.ts", user_profile);
+    let windows_path = format!("{}\\.demos-toolkit\\demostools_file.ts", user_profile);
     
     Err(format!(
         "CLI tools not found. Debug info:
