@@ -38,6 +38,8 @@ fn find_cli_tool_path() -> Result<String, String> {
     // Path 1: Installed - in user's home directory (desktop/exec launch)
     if let Ok(home_dir) = env::var("HOME") {
         let installed_path = format!("{}/.demos-toolkit/demostools_file.ts", home_dir);
+        eprintln!("DEBUG: Checking installed path: {}", installed_path);
+        eprintln!("DEBUG: Path exists: {}", Path::new(&installed_path).exists());
         if Path::new(&installed_path).exists() {
             return Ok(installed_path);
         }
