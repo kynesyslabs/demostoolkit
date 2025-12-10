@@ -16,6 +16,10 @@ import { getTransactionTool } from './tools/modules/get-transaction';
 import { multichainTool } from './tools/modules/multichain';
 import { web2IdentityTool } from './tools/modules/web2-identity';
 import { web2ProxyTool } from './tools/modules/web2-proxy';
+import { accountTool } from './tools/modules/account';
+import { identityTool } from './tools/modules/identity';
+import { keygenTool } from './tools/modules/keygen';
+import { configTool } from './tools/modules/config';
 import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -26,6 +30,10 @@ const moduleTools = {
   'sign': signMessageTool,
   'send': sendTool,
   'check-balance': checkBalanceTool,
+  'account': accountTool,
+  'identity': identityTool,
+  'keygen': keygenTool,
+  'config': configTool,
   'batch-sign': batchSignTool,
   'generate-wallet': generateWalletTool,
   'get-block': getBlockTool,
@@ -41,14 +49,8 @@ const moduleTools = {
   'web2-proxy': web2ProxyTool
 };
 
-// Legacy tools (minimal remaining)
-const legacyTools = {
-  // Configuration (special handling)
-  'config': { file: 'config_tool.ts', desc: 'Manage configuration settings' },
-  
-  // Cross-chain operations (remaining tool)
-  'bridge': { file: 'bridge_assets.ts', desc: 'Bridge assets between chains' }
-};
+// No legacy tools remaining - all modernized
+const legacyTools = {};
 
 function showHelp() {
   console.log(`
@@ -61,12 +63,19 @@ Usage: demostools <command> [options...]
 🔧 Configuration:
   config show                                  Show current configuration and sources
   config init                                  Create initial config file
+  config set <key> <value>                     Set a configuration value
+  config get <key>                             Get a configuration value
+  config set-rpc <url>                         Set RPC endpoint (shorthand)
+  config list-rpcs                             Show available RPC endpoints
   config apply-env                             Apply .env to encrypted config (removes .env)
   config use-config                            Use config file over .env (backs up .env)
 
 🌐 Network Operations:
   generate-wallet [128|256]                    Generate a new wallet with mnemonic
-  check-balance <address>                      Check balance for an address
+  keygen <new|pubkey|recover|verify>           Solana-style key management
+  account [address]                            Show comprehensive account information
+  identity <subcommand>                        Manage Web2/Web3 identities & rewards
+  check-balance <address>                      Check balance for an address (legacy)
   send <amount> <address>                      Send DEM tokens to another address
   get-nonce <address>                          Get the current nonce for an address
   network-info                                 Get network status and peer information
@@ -88,7 +97,6 @@ Usage: demostools <command> [options...]
 🔗 Cross-chain Operations:
   multichain balance <address> [chains]       Check balances across multiple chains
   multichain wrapped <source> <target>        Find wrapped tokens between chains
-  bridge <rubic|native|options> [args...]    Bridge assets between chains
 
 🔧 General:
   help, --help, -h                           Show this help message
@@ -96,6 +104,10 @@ Usage: demostools <command> [options...]
 
 📖 Examples:
   demostools generate-wallet
+  demostools account                           # Show your account info
+  demostools account demo1abc123... --identities
+  demostools identity list                     # Show your identities
+  demostools identity add github https://github.com/user/proof
   demostools check-balance demo1abc123...
   demostools send 10.5 demo1xyz789...
   demostools sign "Hello World" ml-dsa

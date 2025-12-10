@@ -108,3 +108,5 @@ test-output/
 .bun
 .serena
 local-install.sh
+claudedocs
+AGENTS.md

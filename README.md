@@ -175,6 +175,10 @@ The multichain functionality supports:
 ./demostools web2-proxy proxy "https://api.github.com/user" GET
 ```
 
+## 📚 Complete Example Guide
+
+For a comprehensive walkthrough of all features with tested examples and expected outputs, see our **[Complete Example Guide](./EXAMPLES.md)**.
+
 ## 📂 Project Structure
 
 ```
@@ -195,6 +199,7 @@ internal_tools/
 │   └── bridge_assets.ts       # Bridge tool (legacy)
 ├── package.json
 ├── README.md
+├── EXAMPLES.md               # Complete example guide
 └── DEVELOPER_GUIDE.md
 ```
 

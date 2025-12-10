@@ -153,9 +153,10 @@ export class MultichainTool extends DemosTool {
         switch (chain) {
           case 'ethereum_mainnet':
             try {
-              const evm = new xmcore.EVM();
-              const result = await evm.getBalance(address, { chain: 'ethereum' });
-              balance = result.balance;
+              // Initialize EVM with Ethereum mainnet RPC
+              const evm = new xmcore.EVM("https://eth.llamarpc.com", 1);
+              await evm.connect(); // Connect first
+              balance = await evm.getBalance(address); // Correct signature: single address parameter
               chainInfo = { chain: 'ethereum', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`EVM balance check failed for ${chain}`, { error: error.message });
@@ -164,9 +165,11 @@ export class MultichainTool extends DemosTool {
             
           case 'bitcoin_mainnet':
             try {
+              // Note: BTC getBalance() requires connected wallet and takes no parameters
+              // This will need wallet connection to work properly
               const btc = new xmcore.BTC();
-              const result = await btc.getBalance(address);
-              balance = result.balance;
+              await btc.connect();
+              balance = await btc.getBalance(); // Correct signature: no parameters
               chainInfo = { chain: 'bitcoin', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`BTC balance check failed for ${chain}`, { error: error.message });
@@ -175,9 +178,10 @@ export class MultichainTool extends DemosTool {
             
           case 'solana_mainnet':
             try {
-              const solana = new xmcore.SOLANA();
-              const result = await solana.getBalance(address);
-              balance = result.balance;
+              // Initialize Solana with mainnet RPC
+              const solana = new xmcore.SOLANA("https://api.mainnet-beta.solana.com");
+              await solana.connect();
+              balance = await solana.getBalance(address); // Returns string directly, not object
               chainInfo = { chain: 'solana', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`Solana balance check failed for ${chain}`, { error: error.message });
@@ -187,8 +191,8 @@ export class MultichainTool extends DemosTool {
           case 'multiversx_mainnet':
             try {
               const mvx = new xmcore.MULTIVERSX();
-              const result = await mvx.getBalance(address);
-              balance = result.balance;
+              await mvx.connect(); // Connect first
+              balance = await mvx.getBalance(address); // Returns string directly
               chainInfo = { chain: 'multiversx', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`MultiversX balance check failed for ${chain}`, { error: error.message });
@@ -198,8 +202,8 @@ export class MultichainTool extends DemosTool {
           case 'ton_mainnet':
             try {
               const ton = new xmcore.TON();
-              const result = await ton.getBalance(address);
-              balance = result.balance;
+              await ton.connect(); // Connect first
+              balance = await ton.getBalance(address); // Returns string directly
               chainInfo = { chain: 'ton', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`TON balance check failed for ${chain}`, { error: error.message });
@@ -209,8 +213,8 @@ export class MultichainTool extends DemosTool {
           case 'near_mainnet':
             try {
               const near = new xmcore.NEAR();
-              const result = await near.getBalance(address);
-              balance = result.balance;
+              await near.connect(); // Connect first
+              balance = await near.getBalance(address); // Returns string directly
               chainInfo = { chain: 'near', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`NEAR balance check failed for ${chain}`, { error: error.message });
@@ -220,8 +224,8 @@ export class MultichainTool extends DemosTool {
           case 'xrpl_mainnet':
             try {
               const xrpl = new xmcore.XRPL();
-              const result = await xrpl.getBalance(address);
-              balance = result.balance;
+              await xrpl.connect(); // Connect first
+              balance = await xrpl.getBalance(address); // Returns string directly
               chainInfo = { chain: 'xrpl', network: 'mainnet' };
             } catch (error) {
               this.logger.info(`XRPL balance check failed for ${chain}`, { error: error.message });
