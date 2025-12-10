@@ -35,15 +35,21 @@ log_error() { echo -e "${RED}❌ $1${NC}"; }
 detect_platform() {
     local os=$(uname -s)
     local arch=$(uname -m)
-    
+
     case $os in
         Linux*)
             if command -v apt-get >/dev/null 2>&1; then
                 PLATFORM="linux"
                 PACKAGE_MANAGER="apt"
+            elif command -v dnf >/dev/null 2>&1; then
+                PLATFORM="linux"
+                PACKAGE_MANAGER="dnf"
             elif command -v yum >/dev/null 2>&1; then
                 PLATFORM="linux"
                 PACKAGE_MANAGER="yum"
+            elif command -v pacman >/dev/null 2>&1; then
+                PLATFORM="linux"
+                PACKAGE_MANAGER="pacman"
             else
                 PLATFORM="linux"
                 PACKAGE_MANAGER="generic"
@@ -62,8 +68,8 @@ detect_platform() {
             exit 1
             ;;
     esac
-    
-    log_info "Detected platform: $PLATFORM ($arch)"
+
+    log_info "Detected platform: $PLATFORM ($arch) - Package manager: $PACKAGE_MANAGER"
 }
 
 # Check if running as root (not recommended)
@@ -134,7 +140,7 @@ ask_installation_options() {
 # Install system dependencies
 install_dependencies() {
     log_info "Installing system dependencies..."
-    
+
     case $PLATFORM in
         linux)
             case $PACKAGE_MANAGER in
@@ -142,8 +148,14 @@ install_dependencies() {
                     sudo apt update
                     sudo apt install -y curl wget unzip tar git
                     ;;
+                dnf)
+                    sudo dnf install -y curl wget unzip tar git
+                    ;;
                 yum)
                     sudo yum install -y curl wget unzip tar git
+                    ;;
+                pacman)
+                    sudo pacman -Sy --noconfirm curl wget unzip tar git
                     ;;
                 generic)
                     log_warning "Generic Linux detected. Please ensure curl, wget, unzip, tar, and git are installed."
@@ -230,15 +242,31 @@ install_ui_dependencies() {
     if [[ "$BUILD_UI" != "true" ]]; then
         return 0
     fi
-    
+
     log_info "Installing UI build dependencies..."
-    
+
     case $PLATFORM in
         linux)
             case $PACKAGE_MANAGER in
                 apt)
-                    sudo apt install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-                    # AppImage support is optional - don't fail if linuxdeploy isn't available
+                    # Try webkit2gtk-4.1 first (newer), fallback to 4.0 (older distros)
+                    if apt-cache show libwebkit2gtk-4.1-dev >/dev/null 2>&1; then
+                        sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+                    else
+                        sudo apt install -y libwebkit2gtk-4.0-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+                    fi
+                    # AppImage support is optional
+                    if ! command -v linuxdeploy >/dev/null 2>&1; then
+                        log_info "linuxdeploy not found - AppImage creation will be skipped (raw binary will be used)"
+                    fi
+                    ;;
+                dnf)
+                    sudo dnf groupinstall -y "Development Tools"
+                    # Fedora uses webkit2gtk4.1-devel for Tauri 2.0
+                    # Also need pango-devel, libsoup3-devel, cairo-devel, gdk-pixbuf2-devel for GTK/pango bindings
+                    sudo dnf install -y webkit2gtk4.1-devel openssl-devel curl wget gtk3-devel \
+                        libappindicator-gtk3-devel librsvg2-devel pango-devel libsoup3-devel \
+                        cairo-devel cairo-gobject-devel gdk-pixbuf2-devel atk-devel
                     if ! command -v linuxdeploy >/dev/null 2>&1; then
                         log_info "linuxdeploy not found - AppImage creation will be skipped (raw binary will be used)"
                     fi
@@ -246,13 +274,16 @@ install_ui_dependencies() {
                 yum)
                     sudo yum groupinstall -y "Development Tools"
                     sudo yum install -y webkit2gtk3-devel openssl-devel curl wget gtk3-devel libappindicator-gtk3-devel librsvg2-devel
-                    # AppImage support is optional - don't fail if linuxdeploy isn't available
                     if ! command -v linuxdeploy >/dev/null 2>&1; then
                         log_info "linuxdeploy not found - AppImage creation will be skipped (raw binary will be used)"
                     fi
                     ;;
+                pacman)
+                    sudo pacman -Sy --noconfirm webkit2gtk-4.1 base-devel curl wget openssl gtk3 libappindicator-gtk3 librsvg
+                    ;;
                 generic)
-                    log_warning "Please install webkit2gtk, build-essential, and development tools for your distribution"
+                    log_warning "Please install webkit2gtk (4.1 preferred), build-essential, and development tools for your distribution"
+                    log_warning "For Tauri 2.0, you need webkit2gtk-4.1 (or 4.0 for older systems)"
                     ;;
             esac
             ;;

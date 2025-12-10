@@ -1,16 +1,18 @@
 # Demos SDK Toolkit - Desktop UI
 
-A desktop user interface for the Demos SDK Toolkit, built with Tauri and TypeScript.
+A desktop user interface for the Demos SDK Toolkit, built with Tauri 2.0 and TypeScript.
 
 ## Features
 
-- 🖥️ Native desktop application
+- 🖥️ Native desktop application (Linux, macOS, Windows)
 - 🔧 Full access to all CLI tools through intuitive UI
 - 🎨 Modern, responsive design
 - 🔒 Secure execution of CLI commands
 - 📦 Small executable size with Tauri
 - 🌐 Support for all toolkit operations:
   - Configuration management
+  - Key generation & recovery
+  - Account & Identity management
   - Network operations
   - Cryptographic operations
   - Cross-chain interactions
@@ -21,7 +23,7 @@ A desktop user interface for the Demos SDK Toolkit, built with Tauri and TypeScr
 The UI acts as a wrapper around the existing CLI tools:
 
 1. **Frontend**: TypeScript + HTML/CSS for the user interface
-2. **Backend**: Rust (Tauri) for native desktop integration
+2. **Backend**: Rust (Tauri 2.0) for native desktop integration
 3. **CLI Bridge**: Executes the existing CLI tools via subprocess
 4. **No Code Changes**: The original CLI tools remain untouched
 
@@ -30,8 +32,21 @@ The UI acts as a wrapper around the existing CLI tools:
 - [Rust](https://rustup.rs/) (for Tauri)
 - [Bun](https://bun.sh/) (for frontend dependencies)
 - The original CLI tools in the parent directory
+- **Linux**: webkit2gtk-4.1 (or 4.0 for older distros), GTK3, librsvg
 
-## Installation
+## Quick Setup
+
+```bash
+cd ui-app
+./setup.sh
+```
+
+This will install:
+- Tauri CLI
+- Frontend dependencies (via Bun)
+- Check for required icons
+
+## Manual Installation
 
 ```bash
 # From the ui-app directory
@@ -61,9 +76,10 @@ bun run tauri build
 ## UI Components
 
 ### Sidebar Navigation
-- **Configuration**: Config management, wallet generation
+- **Configuration**: Config management, key generation, wallet generation
+- **Account & Identity**: Account info, identity management
 - **Network**: Balance checks, transactions, network info
-- **Cryptography**: Sign/verify messages, encrypt data
+- **Cryptography**: Sign/verify messages, encrypt data, hash operations
 - **Cross-chain**: Multichain operations, asset bridging
 - **Web2**: Identity management, proxy services
 

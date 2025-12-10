@@ -169,6 +169,10 @@ fn find_cli_tool_path() -> Result<String, String> {
 #[tauri::command]
 async fn get_available_commands() -> Result<Vec<String>, String> {
     let commands = vec![
+        "config".to_string(),
+        "keygen".to_string(),
+        "account".to_string(),
+        "identity".to_string(),
         "generate-wallet".to_string(),
         "check-balance".to_string(),
         "send".to_string(),
@@ -185,7 +189,6 @@ async fn get_available_commands() -> Result<Vec<String>, String> {
         "get-transaction".to_string(),
         "get-nonce".to_string(),
         "batch-sign".to_string(),
-        "config".to_string(),
         "bridge".to_string(),
     ];
     Ok(commands)

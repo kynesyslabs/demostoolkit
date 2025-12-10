@@ -16,7 +16,34 @@ const toolDefinitions: Record<string, ToolDefinition> = {
   'config': {
     name: 'Configuration Manager',
     args: [
-      { name: 'action', type: 'select', required: true, options: ['show', 'init', 'apply-env', 'use-config'], help: 'Configuration action to perform' }
+      { name: 'action', type: 'select', required: true, options: ['show', 'init', 'set', 'get', 'set-rpc', 'list-rpcs', 'apply-env', 'use-config'], help: 'Configuration action to perform' },
+      { name: 'key', type: 'text', placeholder: 'PRIVATE_KEY', help: 'Config key (for set/get operations)' },
+      { name: 'value', type: 'text', placeholder: 'value', help: 'Config value (for set operation)' }
+    ]
+  },
+  'keygen': {
+    name: 'Key Generation',
+    args: [
+      { name: 'action', type: 'select', required: true, options: ['new', 'pubkey', 'recover', 'verify'], help: 'Keygen action' },
+      { name: 'mnemonic', type: 'textarea', placeholder: 'word1 word2 word3 ... (for recover)', help: 'Mnemonic seed phrase (for recover action)' },
+      { name: 'pubkey', type: 'text', placeholder: 'public_key (for verify)', help: 'Public key (for verify action)' },
+      { name: 'signature', type: 'text', placeholder: 'signature (for verify)', help: 'Signature to verify' },
+      { name: 'message', type: 'text', placeholder: 'message (for verify)', help: 'Original message' }
+    ]
+  },
+  'account': {
+    name: 'Account Information',
+    args: [
+      { name: 'address', type: 'text', placeholder: 'demo1... (optional)', help: 'Address to check (defaults to connected wallet)' }
+    ]
+  },
+  'identity': {
+    name: 'Identity Management',
+    args: [
+      { name: 'action', type: 'select', required: true, options: ['list', 'web2', 'web3', 'points', 'referral', 'add', 'remove', 'lookup', 'validate-referral'], help: 'Identity action' },
+      { name: 'platform', type: 'select', options: ['github', 'twitter', 'discord', 'telegram'], help: 'Platform (for add/remove/lookup)' },
+      { name: 'username', type: 'text', placeholder: 'username', help: 'Username or identifier' },
+      { name: 'address', type: 'text', placeholder: 'address', help: 'Demos address (for lookup by web3)' }
     ]
   },
   'generate-wallet': {
@@ -170,12 +197,12 @@ function selectTool(toolName: string) {
 function showToolForm(toolName: string) {
   const content = document.querySelector('.content')
   const tool = toolDefinitions[toolName]
-  
+
   if (!tool) {
     content!.innerHTML = `<div class="tool-form active"><h2>Tool not found</h2><p>Tool "${toolName}" is not defined.</p></div>`
     return
   }
-  
+
   const formHtml = `
     <div class="tool-form active">
       <h2>${tool.name}</h2>
@@ -183,12 +210,17 @@ function showToolForm(toolName: string) {
         ${tool.args.map(arg => createFormField(arg)).join('')}
         <button type="submit" class="btn">Execute</button>
       </form>
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p><strong>Executing command...</strong></p>
+        <p class="loading-subtitle">Please wait while the command runs</p>
+      </div>
       <div id="output-container"></div>
     </div>
   `
-  
+
   content!.innerHTML = formHtml
-  
+
   // Add form submit handler
   document.getElementById('tool-form')?.addEventListener('submit', handleFormSubmit)
 }

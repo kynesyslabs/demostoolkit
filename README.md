@@ -1,28 +1,41 @@
 # Demos SDK Toolkit
 
-A comprehensive command-line interface for interacting with the Demos blockchain network. This toolkit provides a unified interface for wallet management, cryptographic operations, cross-chain interactions, and Web2 integrations.
+A comprehensive command-line interface and desktop application for interacting with the Demos blockchain network. This toolkit provides a unified interface for wallet management, cryptographic operations, cross-chain interactions, and Web2 integrations.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - [Bun](https://bun.sh) runtime (v1.0+)
-- Node.js 18+ (for some dependencies)
 
 ### Installation
 
-1. Clone the repository:
+**Option A: Quick Install (Recommended)**
 ```bash
+# One-liner install (CLI + optional Desktop UI)
+bash <(curl -fsSL https://raw.githubusercontent.com/kynesyslabs/demostoolkit/main/quick-install.sh)
+
+# Alternative: download first, then run
+curl -fsSL https://raw.githubusercontent.com/kynesyslabs/demostoolkit/main/quick-install.sh -o install.sh
+bash install.sh
+```
+
+**Option B: Manual Install**
+```bash
+# Clone the repository
 git clone <repository-url>
 cd internal_tools
+
+# Install dependencies
+bun install
+
+# Make CLI executable
+chmod +x demostools
 ```
 
-2. Run the setup script (installs Bun + dependencies automatically):
-```bash
-./setup.sh
-```
+### Configuration
 
-3. Set up your configuration (choose one):
+Set up your configuration (choose one method):
 
 **Option 1: Interactive setup**
 ```bash
@@ -50,23 +63,78 @@ echo 'DEMOS_RPC="https://node2.demos.sh"' >> .env
 # Generate a new wallet
 ./demostools generate-wallet
 
+# Generate keypair (Solana-style key management)
+./demostools keygen new
+./demostools keygen new --no-save  # Display only, don't save
+
+# Recover wallet from mnemonic
+./demostools keygen recover --mnemonic "your twelve word phrase"
+
 # Check balance
 ./demostools check-balance demo1abc123...
 
 # Sign a message
-./demostools sign "Hello World" ml-dsa
+./demostools sign "Hello World" ed25519
 
 # Check multichain balances
 ./demostools multichain balance 0x123...
 ```
+
+## 🖥️ Desktop UI
+
+A native desktop application is available for users who prefer a graphical interface.
+
+### Running the Desktop UI
+
+```bash
+cd ui-app
+
+# Install dependencies
+bun install
+
+# Development mode
+bun run tauri dev
+
+# Build for production
+bun run tauri build
+```
+
+### Desktop UI Setup (Alternative)
+```bash
+cd ui-app
+./setup.sh  # Installs Tauri CLI and dependencies
+```
+
+See [ui-app/README.md](./ui-app/README.md) for detailed UI documentation.
 
 ## 📚 Available Commands
 
 ### 🔧 Configuration Management
 - `config show` - Display current configuration and sources
 - `config init` - Create initial encrypted config file
+- `config set <key> <value>` - Set a configuration value
+- `config get <key>` - Get a configuration value
+- `config set-rpc <url>` - Set RPC endpoint
+- `config list-rpcs` - List available RPC endpoints
 - `config apply-env` - Move .env settings to encrypted config
 - `config use-config` - Switch from .env to config file
+
+### 🔑 Key Management
+- `keygen new [--outfile <path>] [--no-save]` - Generate new keypair
+- `keygen pubkey [--keypair <path>]` - Display public key
+- `keygen recover --mnemonic "..." [--outfile <path>] [--no-save]` - Recover from seed
+- `keygen verify <pubkey> <signature> <message> [algorithm]` - Verify signature
+
+### 👤 Account & Identity
+- `account [address]` - Get comprehensive account information
+- `identity list` - List all linked identities
+- `identity web2` - Show Web2 identities (GitHub, Twitter, etc.)
+- `identity web3` - Show Web3/cross-chain identities
+- `identity points` - Show user points
+- `identity referral` - Show referral information
+- `identity add <platform> <username> <id>` - Add identity
+- `identity remove <platform> <username>` - Remove identity
+- `identity lookup <platform> <username>` - Find Demos address by identity
 
 ### 🌐 Network Operations
 - `generate-wallet [128|256]` - Generate new wallet with mnemonic
@@ -87,7 +155,7 @@ echo 'DEMOS_RPC="https://node2.demos.sh"' >> .env
 
 ### 🌍 Web2 Integration
 - `web2-proxy <proxy|tweet> <url> [method]` - Make attested Web2 API calls
-- `web2-identity <proof|github|twitter|get>` - Manage Web2 identities
+- `web2-identity <proof|github|twitter|get>` - Manage Web2 identities (legacy)
 
 ### 🔗 Cross-chain Operations
 - `multichain balance <address> [chains]` - Check balances across chains
@@ -183,24 +251,39 @@ For a comprehensive walkthrough of all features with tested examples and expecte
 
 ```
 internal_tools/
-├── demostools.ts              # Main CLI entry point
+├── demostools                 # CLI wrapper script
+├── demostools_file.ts         # Main CLI entry point
 ├── tools/
 │   ├── modules/               # Modular tool implementations
+│   │   ├── keygen.ts          # Key generation & recovery
+│   │   ├── account.ts         # Account information
+│   │   ├── identity.ts        # Identity management
 │   │   ├── sign-message.ts    # Message signing
 │   │   ├── check-balance.ts   # Balance checking
 │   │   ├── multichain.ts      # Cross-chain operations
-│   │   └── ...               # Other tools
-│   ├── utils/                 # Shared utilities
 │   │   ├── config.ts          # Configuration management
+│   │   └── ...                # Other tools (send, encrypt, hash, etc.)
+│   ├── utils/                 # Shared utilities
+│   │   ├── config.ts          # Configuration manager
 │   │   ├── encryption.ts      # Crypto operations
 │   │   ├── logger.ts          # Logging system
 │   │   └── tool-framework.ts  # Base tool class
-│   ├── config_tool.ts         # Configuration tool (legacy)
 │   └── bridge_assets.ts       # Bridge tool (legacy)
+├── ui-app/                    # Desktop UI (Tauri)
+│   ├── src/                   # Frontend TypeScript
+│   ├── src-tauri/             # Rust backend
+│   ├── setup.sh               # UI setup script
+│   └── README.md              # UI documentation
+├── install-demos-toolkit.sh   # Universal installer
+├── local-install.sh           # Local development installer
+├── quick-install.sh           # Quick one-liner installer
 ├── package.json
 ├── README.md
-├── EXAMPLES.md               # Complete example guide
-└── DEVELOPER_GUIDE.md
+├── EXAMPLES.md                # Complete example guide
+├── DEVELOPER_GUIDE.md         # Developer documentation
+├── UI_GUIDE.md                # Desktop UI guide
+├── INSTALL.md                 # Installation guide
+└── LICENSE.md                 # License information
 ```
 
 ## 🛠️ Development
